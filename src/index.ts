@@ -16,12 +16,32 @@ export default {
 		}
 
 		const url = new URL(request.url);
+		if (url.pathname == "/") {
+			return Response.redirect(url.protocol + "//" + url.host + "/v2/", 301);
+		}
 		const upstream = routeByHosts(url.hostname);
 
 		const isDockerHub = upstream == dockerHub.target;
 		const authorization = request.headers.get("Authorization");
+		if (url.pathname == "/v2/") {
+			const newUrl = new URL(upstream + "/v2/");
+			const headers = new Headers();
+			if (authorization) {
+				headers.set("Authorization", authorization);
+			}
+			// check if need to authenticate
+			const resp = await fetch(newUrl.toString(), {
+				method: "GET",
+				headers: headers,
+				redirect: "follow",
+			});
+			if (resp.status === 401) {
+				return dockerHub.responseUnauthorized(url);
+			}
+			return resp;
+		}
 		// get token
-		if (url.pathname == "/token") {
+		if (url.pathname == "/v2/auth") {
 			const newUrl = new URL(upstream + "/v2/");
 			const resp = await fetch(newUrl.toString(), {
 				method: "GET",
@@ -45,7 +65,7 @@ export default {
 					scope = scopeParts.join(":");
 				}
 			}
-			return dockerHub.fetchToken(wwwAuthenticate, scope, authorization);
+			return await dockerHub.fetchToken(wwwAuthenticate, scope, authorization);
 		}
 		// redirect for DockerHub library images
 		// Example: /v2/busybox/manifests/latest => /v2/library/busybox/manifests/latest
@@ -63,23 +83,24 @@ export default {
 		const newReq = new Request(newUrl, {
 			method: request.method,
 			headers: request.headers,
-			redirect: "follow",
+			// don't follow redirect to dockerhub blob upstream
+			redirect: isDockerHub ? "manual" : "follow",
 		});
 		const resp = await fetch(newReq);
 		// check if need to authenticate
 		if (resp.status === 401) {
-			const headers = new Headers(resp.headers);
-			headers.set(
-				"Www-Authenticate",
-				`Bearer realm="https://${url.hostname}/token",service="cloudflare-docker-proxy"`
-			);
-			return new Response(resp.body, {
-				status: 401,
-				headers: headers,
-			});
-		} else {
-			return resp;
+			return dockerHub.responseUnauthorized(url);
 		}
+		// handle dockerhub blob redirect manually
+		if (isDockerHub && resp.status == 307) {
+			const location = new URL(<string>resp.headers.get("Location"));
+			const redirectResp = await fetch(location.toString(), {
+				method: "GET",
+				redirect: "follow",
+			});
+			return redirectResp;
+		}
+		return resp;
 
 
 	},

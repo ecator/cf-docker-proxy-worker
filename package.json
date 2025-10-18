@@ -10,11 +10,11 @@
     "cf-typegen": "wrangler types"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.5.2",
+    "@cloudflare/vitest-pool-workers": "^0.9.13",
     "@cloudflare/workers-types": "^4.20240909.0",
     "typescript": "^5.5.2",
-    "vitest": "2.0.5",
-    "wrangler": "^3.60.3"
+    "vitest": "^2.1.9",
+    "wrangler": "^4.43.0"
   },
   "dependencies": {
     "docker-proxy-worker": "file:"

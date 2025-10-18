@@ -11,7 +11,17 @@ function parseAuthenticate(authenticateStr: string): WWWAuthenticate {
         service: matches[1],
     };
 }
-
+function responseUnauthorized(url: URL) {
+    const headers = new Headers();
+    headers.set(
+        "Www-Authenticate",
+        `Bearer realm="https://${url.hostname}/v2/auth",service="cloudflare-docker-proxy"`
+    );
+    return new Response(JSON.stringify({ message: "UNAUTHORIZED" }), {
+        status: 401,
+        headers: headers,
+    });
+}
 async function fetchToken(wwwAuthenticate: WWWAuthenticate, scope: string | null, authorization: string | null): Promise<Response> {
     const url = new URL(wwwAuthenticate.realm);
     if (wwwAuthenticate.service.length) {
@@ -24,7 +34,6 @@ async function fetchToken(wwwAuthenticate: WWWAuthenticate, scope: string | null
     if (authorization) {
         headers.set("Authorization", authorization);
     }
-    // https://auth.docker.io/token?scope=repository%3Alibrary%2Fubuntu%3Apull&service=registry.docker.io
     return await fetch(url, { method: "GET", headers: headers });
 }
 
@@ -32,6 +41,7 @@ const target = "https://registry-1.docker.io";
 
 export default {
     parseAuthenticate,
+    responseUnauthorized,
     fetchToken,
     target
 }
