@@ -6,6 +6,8 @@
 npx wrangler deploy
 ```
 
+因为[docker增加了pull限制](https://docs.docker.com/docker-hub/usage/)，所以需要运行`docker login proxy.domain`来登录下，就用docker的用户和[PAT](https://docs.docker.com/security/access-tokens/)就行。
+
 ---
 
 **参考**
